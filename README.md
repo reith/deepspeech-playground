@@ -53,7 +53,7 @@ $ KERAS_BACKEND="tensorflow" python train.py descs/small.arpadesc descs/test-cle
 
 ## Evaluation
 
-`visualize.py` will give you a semi-shell for testing your model by giving it input files. There is also [model-evaluation notebook](model-evaluation.ipynb), though it may look too dirty..
+`visualize.py` will give you a semi-shell for testing your model by giving it input files. There is also [models-evaluation notebook](models-evaluation.ipynb), though it may look too dirty..
 
 ## Pre-trained models
 
