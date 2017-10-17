@@ -48,7 +48,7 @@ def train_sample_half_phoneme(datagen, save_dir, epochs, sortagrad,
 ```
 And call it in from `main()` of `train.py`. Training can be done by:
 ```
-$ KERAS_BACKEND="tensorflow" python train.py descs/small.arpadesc descs/test-clean.arpadesc models/test --epochs 20 --use-arpabets --sortagrad 1```
+$ KERAS_BACKEND="tensorflow" python train.py descs/small.arpadesc descs/test-clean.arpadesc models/test --epochs 20 --use-arpabets --sortagrad 1
 ```
 
 ## Evaluation
@@ -59,7 +59,7 @@ $ KERAS_BACKEND="tensorflow" python train.py descs/small.arpadesc descs/test-cle
 
 These models are trained for about three days by LibriSpeech corpus on a GTX 1080 Ti GPU:
 
-- A five layers unidirectional RNN model trained by LibriSpeech using Theano:  [mega](https://mega.nz/#!ZTIjXQgA!HK1vCRxYC1VyzJ_8LCwwcTrNH9aF7l-H8TYf7eE1v6g)
-- A five layers unidirectional RNN model trained by LibriSpeech using Tensorflow: [mega](https://mega.nz/#!APR1iRjT!pgJcnEWLTHzJ4m9dQXA_2gvrJxa_h9uwEHc6Sxwreow)
+- A five layers unidirectional RNN model trained by LibriSpeech using Theano:  [mega](https://mega.nz/#!ZTIjXQgA!HK1vCRxYC1VyzJ_8LCwwcTrNH9aF7l-H8TYf7eE1v6g), [drive](https://drive.google.com/open?id=0B-xCVC7fUa3MZ3B1UVpYWlY1LWs)
+- A five layers unidirectional RNN model trained by LibriSpeech using Tensorflow: [mega](https://mega.nz/#!APR1iRjT!pgJcnEWLTHzJ4m9dQXA_2gvrJxa_h9uwEHc6Sxwreow), [drive](https://drive.google.com/open?id=0B-xCVC7fUa3MdkdNc05zT2dyblk)
 
-Validation WER of these models on `test-clean` is about %5 an It's about %15 on `test-other`.
+Validation ~~WER~~ CER of these models on `test-clean` is about %5 an It's about %15 on `test-other`.
