@@ -9,7 +9,7 @@ from keras.models import model_from_json
 from numpy.lib.stride_tricks import as_strided
 
 from char_map import char_map, index_map
-import edit_distance
+from edit_distance import SequenceMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -307,6 +307,21 @@ def configure_logging(console_log_level=logging.INFO,
         root_logger.addHandler(console_handler)
 
 
+def char_error_rate(true_labels, pred_labels, decoded=False):
+    cers = np.empty(len(true_labels))
+
+    if not decoded:
+        pred_labels = for_tf_or_th(pred_labels, pred_labels.swapaxes(0, 1))
+
+    i = 0
+    for true_label, pred_label in zip(true_labels, pred_labels):
+        prediction = pred_label if decoded else argmax_decode(pred_label)
+        ratio = SequenceMatcher(true_label, prediction).ratio()
+        cers[i] = 1 - ratio
+        i += 1
+    return cers
+
+
 def word_error_rate(true_labels, pred_labels, decoded=False):
     wers = np.empty(len(true_labels))
 
@@ -316,11 +331,47 @@ def word_error_rate(true_labels, pred_labels, decoded=False):
     i = 0
     for true_label, pred_label in zip(true_labels, pred_labels):
         prediction = pred_label if decoded else argmax_decode(pred_label)
-        ratio = edit_distance.SequenceMatcher(true_label, prediction).ratio()
-        wers[i] = 1 - ratio
+        # seq_matcher = SequenceMatcher(prediction, true_label)
+        # errors = [c for c in seq_matcher.get_opcodes() if c[0] != 'equal']
+        # error_lens = [max(e[4] - e[3], e[2] - e[1]) for e in errors]
+        # wers[i] = sum(error_lens) / float(len(true_label.split()))
+        wers[i] = wer(true_label, prediction)
         i += 1
     return wers
 
+def wer(original, result):
+    r"""
+    The WER is defined as the editing/Levenshtein distance on word level
+    divided by the amount of words in the original text.
+    In case of the original having more words (N) than the result and both
+    being totally different (all N words resulting in 1 edit operation each),
+    the WER will always be 1 (N / N = 1).
+    """
+    # The WER ist calculated on word (and NOT on character) level.
+    # Therefore we split the strings into words first:
+    original = original.split()
+    result = result.split()
+    return levenshtein(original, result) / float(len(original))
+
+def levenshtein(a,b):
+    "Calculates the Levenshtein distance between a and b."
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n,m)) space
+        a,b = b,a
+        n,m = m,n
+
+    current = list(range(n+1))
+    for i in range(1,m+1):
+        previous, current = current, [i]+[0]*n
+        for j in range(1,n+1):
+            add, delete = previous[j]+1, current[j-1]+1
+            change = previous[j-1]
+            if a[j-1] != b[i-1]:
+                change = change + 1
+            current[j] = min(add, delete, change)
+
+    return current[n]
 
 def for_tf_or_th(tf_val, th_val):
     backname = keras.backend.backend()
