@@ -12,9 +12,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data_generator import DataGenerator
-from utils import argmax_decode, load_model
-from model_wrp import HalfPhonemeModelWrapper, GruModelWrapper
+from test import load_model_wrapper
 
 
 def softmax(x):
@@ -50,6 +48,8 @@ def visualize(model, test_file, train_desc_file):
                               model
     """
     from model import compile_output_fn
+    from data_generator import DataGenerator
+    from utils import argmax_decode
 
     datagen = DataGenerator()
     datagen.load_train_data(train_desc_file)
@@ -81,38 +81,52 @@ def visualize(model, test_file, train_desc_file):
     plt.savefig(softmax_img_file)
 
 
-def interactive_vis(model_dir, train_desc_file, weights_file=None):
+def interactive_vis(model_dir, model_config, train_desc_file, weights_file=None):
     """ Get the prediction using the model, and visualize softmax outputs, able
     to predict multiple inputs.
     Params:
         model_dir (str): Trained speech model or None. If None given will ask
             code to make model.
+        model_config (str): Path too pre-trained model configuration
         train_desc_file(str): Path to the training file used to train this
                               model
         weights_file(str): Path to stored weights file for model being made
     """
 
-    datagen = DataGenerator()
-    datagen.load_train_data(train_desc_file)
-    datagen.fit_train(100)
-
     if model_dir is None:
         assert weights_file is not None
-        print ("""Make and store new model into model, e.g.
-               >>> model_wrp = HalfPhonemeModelWrapper()
-               >>> model = model_wrp.compile(nodes=1000, recur_layers=5,
-                                             conv_context=5)
-               """)
+        if model_config is None:
+            from model_wrp import HalfPhonemeModelWrapper, GruModelWrapper
+            print ("""Make and store new model into model, e.g.
+                >>> model_wrp = HalfPhonemeModelWrapper()
+                >>> model = model_wrp.compile(nodes=1000, recur_layers=5,
+                                                conv_context=5)
+                """)
 
-        model = prompt_loop('[model=]> ', locals())['model']
-        model.load_weights(weights_file)
+            model = prompt_loop('[model=]> ', locals())['model']
+            model.load_weights(weights_file)
+        else:
+            model_wrapper = load_model_wrapper(model_config, weights_file)
+            test_fn = model_wrapper.compile_output_fn()
     else:
+        from utils import load_model
         model = load_model(model_dir, weights_file)
 
-    print ("""Make and store test function to test_fn, e.g.
-           >>> test_fn = model_wrp.compile_output_fn()
-           """)
-    test_fn = prompt_loop('[test_fn=]> ', locals())['test_fn']
+    if model_config is None:
+        print ("""Make and store test function to test_fn, e.g.
+            >>> test_fn = model_wrp.compile_output_fn()
+            """)
+        test_fn = prompt_loop('[test_fn=]> ', locals())['test_fn']
+
+    from utils import argmax_decode
+    from data_generator import DataGenerator
+    datagen = DataGenerator()
+
+    if train_desc_file is not None:
+        datagen.load_train_data(train_desc_file)
+        datagen.fit_train(100)
+    else:
+        datagen.reload_norm('860-1000')
 
     while True:
         try:
@@ -137,12 +151,12 @@ def interactive_vis(model_dir, train_desc_file, weights_file=None):
             break
 
         try:
-            inputs = [datagen.featurize(test_file)]
+            inputs = [datagen.normalize(datagen.featurize(test_file))]
         except Exception as exc:
             print (exc)
             continue
 
-        prediction = np.squeeze(test_fn([inputs, True]))
+        prediction = np.squeeze(test_fn([inputs, False]))
 
         softmax_file = "softmax.npy".format(test_file)
         softmax_img_file = "softmax.png".format(test_file)
@@ -161,22 +175,36 @@ def interactive_vis(model_dir, train_desc_file, weights_file=None):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--test_file', type=str, help='Path to an audio file')
-    parser.add_argument('train_desc_file', type=str,
+    parser = argparse.ArgumentParser(
+        description="Evaluate model on input file(s).", epilog="""
+        This script can give an interactive shell for evaluation on multiple
+        input files. If you want plain prediction as originally came from
+        Baidu's repo and model is trained without `model_wrapper` helpers,
+        arguments --test-file, --train-desc-file, --load-dir and --weights-file
+        are necessary.  Otherwise set --interactive and If model is shipped
+        by this repo give model config by --model-config.
+        """)
+    parser.add_argument('--test-file', type=str, help='Path to an audio file')
+    parser.add_argument('--train-desc-file', type=str,
                         help='Path to the training JSON-line file. This will '
                              'be used to extract feature means/variance')
-    parser.add_argument('--load_dir', type=str,
+    parser.add_argument('--load-dir', type=str,
                         help='Directory where a trained model is stored.')
-    parser.add_argument('--weights_file', type=str, default=None,
+    parser.add_argument('--model-config', type=str,
+                        help='Path to pre-trained model configuration')
+    parser.add_argument('--weights-file', type=str, default=None,
                         help='Path to a model weights file')
     parser.add_argument('--interactive', default=False, action='store_true',
-                        help='Interactive interface')
+                        help='Interactive interface, necessary for pre-trained'
+                        ' models with this repo.')
     args = parser.parse_args()
 
     if args.interactive:
-        interactive_vis(args.load_dir, args.train_desc_file, args.weights_file)
+        assert args.test_file is None
+        interactive_vis(args.load_dir, args.model_config, args.train_desc_file,
+                        args.weights_file)
     else:
+        from utils import load_model
         if args.load_dir is None or args.test_file is None:
             parser.print_usage()
             sys.exit(1)

@@ -11,7 +11,7 @@ import json
 
 
 def load_model_wrapper(model_config_file, weights_file):
-    """Loads a pre-trained model and return it and It's testing function"""
+    """Loads a pre-trained model wrapper"""
     with open(model_config_file) as fp:
         model_config = json.load(fp)
     try:
@@ -24,7 +24,6 @@ def load_model_wrapper(model_config_file, weights_file):
         model_wrapper = wrapper_class(**wrapper_config.get('init_args', {}))
         model = model_wrapper.compile(**wrapper_config.get('compile_args', {}))
         model.load_weights(weights_file)
-        model_wrapper.compile_test_fn()
     except (KeyError, ):
         print ("Model is not known")
         sys.exit(1)
@@ -34,7 +33,7 @@ def load_model_wrapper(model_config_file, weights_file):
 def main(test_desc_file, model_config_file, weights_file):
     # Load model
     model_wrapper = load_model_wrapper(model_config_file, weights_file)
-    model, test_fn = model_wrapper.model, model_wrapper.val_fn
+    model, test_fn = model_wrapper.model, model_wrapper.compile_test_fn()
 
     # Prepare the data generator
     from data_generator import DataGenerator
